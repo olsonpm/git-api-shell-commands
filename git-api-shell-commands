@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+
+#------------------#
+# Environment Vars #
+#------------------#
+# GIT_API_TOKEN
+# GIT_USER
+#------------------#
+
+function c_git_list_repos
+{
+	curl -u "${GIT_API_TOKEN}":x-oauth-basic https://api.github.com/user/repos
+}
+
+function c_git_push_to_new_repo
+{
+    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
+		echo "c_git_push_to_new_repo expects the first argument to be a repo name, and the second to be the branch that's being moved"
+    else
+		repoName="${1}"
+		branchToMove="${2}"
+		git push "git@github.com:${GIT_USER}/${repoName}.git" "${branchToMove}"
+	fi
+}
+
+function c_git_create_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_create_repo expects a string parameter"
+	else
+		repoName="${1}"
+		httpCode=$(curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"name": "'"${repoName}"'"}' https://api.github.com/user/repos -w "%{http_code}" --silent --output /dev/null)
+		if [ "${httpCode}" = "201" ]; then
+			echo "Successfully created repo '${repoName}'."
+		else
+			echo "Something odd happened.  Command ran was:"
+			echo curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"name": "'"${repoName}"'"}' https://api.github.com/user/repos -w "%{http_code}" --silent --output /dev/null
+			printf "\nRun it again and display output? [Y/n]: "
+			read res
+			if [ "${res}" = "Y" ] || [ "${res}" = "y" ]; then
+				curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"name": "'"${repoName}"'"}' https://api.github.com/user/repos
+			fi
+		fi
+	fi
+}
+
+function c_git_clone_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_clone_repo expects a string parameter"
+	else
+		repoName="${1}"
+		git clone "git@github.com:${GIT_USER}/${repoName}.git"
+	fi
+}
+
+function c_git_create_and_clone_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_create_and_clone_repo expects a string parameter"
+	else
+		repoName="${1}"
+		c_git_create_repo "${repoName}"
+		c_git_clone_repo "${repoName}"
+	fi
+}
+
+function c_git_delete_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_delete_repo expects a string parameter"
+	else
+		repoName="${1}"
+		echo "About to delete repo: '${repoName}'.  Please re-enter this name to delete the repo."
+		read repoName2
+		if [ "${repoName}" = "${repoName2}" ]; then
+			curl -X DELETE -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"name": "'"${repoName}"'"}' https://api.github.com/repos/olsonpm/"${repoName}"
+			echo "Successfully deleted repo '${repoName}'."
+		else
+			echo "names '${repoName}' and '${repoName2}' did not match.  Now exiting."
+		fi
+	fi
+}
+
+function c_fork_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_fork_repo expects a string parameter"
+	else
+		arrIn=(${1//\// })
+		owner="${arrIn[0]}"
+		repo="${arrIn[1]}"
+		curl -u "${GIT_API_TOKEN}":x-oauth-basic "https://api.github.com/repos/${owner}/${repo}/forks"
+	fi
+}
+function c_git_fork_and_clone_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_fork_and_clone_repo expects a string parameter"
+	else
+        local newName=""
+        if [ ! -z ${2+x} ]; then
+            newName="${2}"
+        fi
+		local arrIn=(${1//\// })
+		local owner="${arrIn[0]}"
+		local repo="${arrIn[1]}"
+		echo "forking repo ${repo}..."
+		curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"owner": "'"${owner}"'", "repo": "'"${repo}"'"}' "https://api.github.com/repos/${owner}/${repo}/forks" --silent --output /dev/null
+		
+		local i=0;
+		local success=1
+		while [ ${success} -eq 1 ] && [ ${i} -lt 5 ]; do
+			sleep 5
+			echo "attempting to clone repo '${repo}'"
+			__try_clone_repo "${repo}"
+			success=$?
+			i=$((${i}+1))
+		done
+		
+		if [ ${success} -eq 1 ]; then
+			echo "unable to clone repo '${repo}' after five tries."
+		else
+			echo "successfully cloned the forked repo '${repo}'."
+            if [ "${newName}" != "" ]; then
+                cd "./${repo}"
+                c_git_rename_repo "${repo}" "${newName}"
+            fi
+		fi
+	fi
+}
+
+function c_git_rename_repo
+{
+	
+    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
+		echo "c_git_rename_repo expects two string parameters (<old> <new>)"
+	else
+		local repoOld="${1}"
+		local repoNew="${2}"
+		local renameFeedback=$(curl -u ${GIT_API_TOKEN}:x-oauth-basic -X PATCH -d '{"name": "'"${repoNew}"'"}' https://api.github.com/repos/olsonpm/${repoOld} 2>&1)
+		echo "${renameFeedback}"
+		case "${renameFeedback}" in
+			*ERROR*)
+				echo "Error occurred while attempting to rename repository: ${renameFeedback}"
+				;;
+			*"Problems parsing JSON"*)
+				echo "Error occurred while attempting to rename repository: ${renameFeedback}"
+				;;
+			*)
+				echo "Successfully renamed repository."
+				CWD=$(basename $(pwd));
+				if [ "${CWD}" = "${repoOld}" ]; then
+					git remote set-url origin "git@github.com:olsonpm/${repoNew}.git"
+					echo "successfully changed git remote"
+					cd ../
+					mv "${repoOld}" "${repoNew}"
+					cd "${repoNew}"
+					echo "successfully changed directory name"
+				fi
+				;;
+		esac
+	fi
+}
+
+function __try_clone_repo
+{
+    if [ -z ${1+x} ]; then
+		echo "c_git_test expects a string parameter"
+	else
+        local repo="${1}"
+        local cloneFeedback=$(c_git_clone_repo "${repo}" 2>&1)
+		case "${testing}" in
+			*ERROR*)
+				exitStatus=1
+				;;
+			*"Problems parsing JSON"*)
+				exitStatus=1
+				;;
+			*)
+				exitStatus=0
+				;;
+		esac
+		
+		return ${exitStatus};
+	fi
+}
+
+function gitc
+{
+    if [ -z ${1+x} ]; then
+		echo "gitc expects a string parameter (commit message)"
+	else
+        msg="${1}"
+        git add . && git commit -m "${msg}"
+    fi
+}
+
+function gitp
+{
+    if [ -z ${1+x} ]; then
+		echo "gitp expects a string parameter (commit message)"
+	else
+        msg="${1}"
+        git add . && git commit -m "${msg}" && git push
+    fi
+}
+
+export -f c_git_create_repo
+export -f c_git_clone_repo
+export -f c_git_create_and_clone_repo
+export -f c_git_list_repos
+export -f c_git_delete_repo
+export -f c_git_fork_and_clone_repo
+export -f c_git_rename_repo
+export -f gitc
+export -f gitp
