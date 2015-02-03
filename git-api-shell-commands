@@ -206,6 +206,17 @@ function gitp
     fi
 }
 
+function c_git_add_ssh_key
+{
+    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
+	echo "c_git_add_ssh_key expects two parameters (title, pub key contents)"
+    else
+	local title="${1}"
+	local key="${2}"
+	curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"title": "'"${title}"'", "key": "'"${key}"'"}' https://api.github.com/user/keys
+    fi
+}
+
 export -f c_git_create_repo
 export -f c_git_clone_repo
 export -f c_git_create_and_clone_repo
@@ -213,5 +224,6 @@ export -f c_git_list_repos
 export -f c_git_delete_repo
 export -f c_git_fork_and_clone_repo
 export -f c_git_rename_repo
+export -f c_git_add_ssh_key
 export -f gitc
 export -f gitp
