@@ -23,6 +23,23 @@ function c_git_push_to_new_repo
 	fi
 }
 
+function c_git_create_branch
+{
+    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
+		echo "c_git_create_branch requires the first argument to be the repo name and the second argument to be the new branch name.  Optionally a third argument can be the branch name to branch from."
+    else
+		local branchFrom="master"
+		if [ ! -z ${3+x} ]; then
+			echo "and here ${3}"
+			branchFrom="${3}"
+		fi
+		local repoName="${1}"
+		local newBranchName="${2}"
+		local sha=$(curl -s -u "${GIT_API_TOKEN}":x-oauth-basic 'https://api.github.com/repos/olsonpm/'"${repoName}"'/git/refs' | jsawk -q '?ref="refs/heads/'"${branchFrom}"'";' 'return this.object.sha' -a 'return this[0]')
+		curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"ref": "refs/heads/'"${newBranchName}"'", "sha": "'"${sha}"'" }' 'https://api.github.com/repos/olsonpm/'"${repoName}"'/git/refs'
+    fi
+}
+
 function c_git_create_repo
 {
     if [ -z ${1+x} ]; then
