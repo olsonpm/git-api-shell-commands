@@ -63,12 +63,22 @@ function c_git_create_repo
 
 function c_git_clone_repo
 {
-    if [ -z ${1+x} ]; then
-		echo "c_git_clone_repo expects a string parameter"
-	else
-		repoName="${1}"
-		git clone "git@github.com:${GIT_USER}/${repoName}.git"
+	if [ -z ${1+x} ]; then
+		echo "c_git_clone_repo requires at least a single parameter (repo name).  If two parameters are given, then the first parameter = username, second parameter = repo name"
+		exit 0
 	fi
+	
+	local user=''
+	local repoName=''
+	if [ -z ${2+x} ]; then
+		user="${GIT_USER}"
+		repoName="${1}"
+	else
+		user="${1}"
+		repoName="${2}"
+	fi
+	
+	git clone "git@github.com:${user}/${repoName}.git"
 }
 
 function c_git_create_and_clone_repo
@@ -219,7 +229,7 @@ function gitp
 		echo "gitp expects a string parameter (commit message)"
 	else
         msg="${1}"
-        git add . && git commit -m "${msg}" && git push
+        git add . && git commit -m "${msg}" && git push origin HEAD
     fi
 }
 
@@ -235,6 +245,7 @@ function c_git_add_ssh_key
 }
 
 export -f c_git_create_repo
+export -f c_git_create_branch
 export -f c_git_clone_repo
 export -f c_git_create_and_clone_repo
 export -f c_git_list_repos
