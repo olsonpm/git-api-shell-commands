@@ -71,8 +71,15 @@ function c_git_clone_repo
 	local user=''
 	local repoName=''
 	if [ -z ${2+x} ]; then
-		user="${GIT_USER}"
-		repoName="${1}"
+	
+        if [[ "${1}" == *"/"* ]]; then	
+			arrIn=(${1//\// })
+			user="${arrIn[0]}"
+			repoName="${arrIn[1]}"
+		else
+			user="${GIT_USER}"
+			repoName="${1}"
+		fi
 	else
 		user="${1}"
 		repoName="${2}"
@@ -113,12 +120,16 @@ function c_fork_repo
 {
     if [ -z ${1+x} ]; then
 		echo "c_fork_repo expects a string parameter"
-	else
+		return 1
+	elif [ -z ${2+x} ]; then
 		arrIn=(${1//\// })
 		owner="${arrIn[0]}"
 		repo="${arrIn[1]}"
-		curl -u "${GIT_API_TOKEN}":x-oauth-basic "https://api.github.com/repos/${owner}/${repo}/forks"
+	else
+		owner="${0}"
+		repo="${1}"
 	fi
+	curl -u "${GIT_API_TOKEN}":x-oauth-basic "https://api.github.com/repos/${owner}/${repo}/forks"
 }
 function c_git_fork_and_clone_repo
 {
@@ -126,12 +137,27 @@ function c_git_fork_and_clone_repo
 		echo "c_git_fork_and_clone_repo expects a string parameter"
 	else
         local newName=""
-        if [ ! -z ${2+x} ]; then
-            newName="${2}"
+        local owner=""
+        local repo=""
+        local arrIn=""
+        
+        if [[ "${1}" == *"/"* ]]; then
+			arrIn=(${1//\// })
+			owner="${arrIn[0]}"
+			repo="${arrIn[1]}"
+			
+			if [ ! -z ${2+x} ]; then
+				newName="${2}"
+			fi
+        else
+			owner="${arrIn[0]}"
+			repo="${arrIn[1]}"
+			
+			if [ ! -z ${3+x} ]; then
+				newName="${3}"
+			fi
         fi
-		local arrIn=(${1//\// })
-		local owner="${arrIn[0]}"
-		local repo="${arrIn[1]}"
+        
 		echo "forking repo ${repo}..."
 		curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"owner": "'"${owner}"'", "repo": "'"${repo}"'"}' "https://api.github.com/repos/${owner}/${repo}/forks" --silent --output /dev/null
 		
