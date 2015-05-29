@@ -240,7 +240,7 @@ function c_git_add_ssh_key
     else
 	local title="${1}"
 	local key="${2}"
-	curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"title": "'"${title}"'", "key": "'"${key}"'"}' https://api.github.com/user/keys
+	curl -H "Authorization: token ${GIT_API_TOKEN}" -d '{"title": "'"${title}"'", "key": "'"${key}"'"}' https://api.github.com/user/keys
     fi
 }
 
