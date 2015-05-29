@@ -65,7 +65,7 @@ function c_git_clone_repo
 {
 	if [ -z ${1+x} ]; then
 		echo "c_git_clone_repo requires at least a single parameter (repo name).  If two parameters are given, then the first parameter = username, second parameter = repo name"
-		exit 0
+		return 1
 	fi
 	
 	local user=''
