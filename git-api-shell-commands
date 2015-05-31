@@ -184,15 +184,20 @@ function c_git_fork_and_clone_repo
 }
 
 function c_git_rename_repo
-{
-	
-    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
-		echo "c_git_rename_repo expects two string parameters (<old> <new>)"
+{	
+    if [ -z ${1+x} ]; then
+		echo "c_git_rename_repo requires at least one string parameter ([<old>] <new>)"
 	else
-		local repoOld="${1}"
-		local repoNew="${2}"
+        local repoOld=""
+        local repoNew=""
+        if [ -z ${2+x} ]; then
+            repoOld=$(basename $(pwd))
+            repoNew="${1}"
+        else
+            repoOld="${1}"
+            repoNew="${2}"
+        fi
 		local renameFeedback=$(curl -u ${GIT_API_TOKEN}:x-oauth-basic -X PATCH -d '{"name": "'"${repoNew}"'"}' https://api.github.com/repos/olsonpm/${repoOld} 2>&1)
-		echo "${renameFeedback}"
 		case "${renameFeedback}" in
 			*ERROR*)
 				echo "Error occurred while attempting to rename repository: ${renameFeedback}"
