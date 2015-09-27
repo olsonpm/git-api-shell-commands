@@ -1,10 +1,8 @@
-#!/usr/bin/env bash
-
 #------------------#
 # Environment Vars #
 #------------------#
-# GIT_API_TOKEN
-# GIT_USER
+# GIT_API_TOKEN    #
+# GIT_USER         #
 #------------------#
 
 function c_git_list_repos
@@ -67,12 +65,12 @@ function c_git_clone_repo
 		echo "c_git_clone_repo requires at least a single parameter (repo name).  If two parameters are given, then the first parameter = username, second parameter = repo name"
 		return 1
 	fi
-	
+
 	local user=''
 	local repoName=''
 	if [ -z ${2+x} ]; then
-	
-        if [[ "${1}" == *"/"* ]]; then	
+
+        if [[ "${1}" == *"/"* ]]; then
 			arrIn=(${1//\// })
 			user="${arrIn[0]}"
 			repoName="${arrIn[1]}"
@@ -84,7 +82,7 @@ function c_git_clone_repo
 		user="${1}"
 		repoName="${2}"
 	fi
-	
+
 	git clone "git@github.com:${user}/${repoName}.git"
 }
 
@@ -123,7 +121,7 @@ function c_git_delete_repo
                 local repoDir=
                 local curDir=$(basename "${PWD}")
                 local askedToDelete=1
-                
+
                 # first check pwd to see if the basename matches the repo name
                 if [ "${curDir}" = "${repoName}" ]; then
                     askedToDelete="0"
@@ -131,7 +129,7 @@ function c_git_delete_repo
                     read delRepoDir
                     if [ "${delRepoDir}" != "n" ] && [ "${delRepoDir}" != "N" ]; then
                         repoDir="${PWD}"
-                        cd ../  
+                        cd ../
                     fi
                 else # if pwd doesn't match, then loop through current level directories
                     # ideally we'd set up a while loop and iterate through the directories.  However this is bash where dirty code is king.
@@ -144,7 +142,7 @@ function c_git_delete_repo
                             break;
                         fi
                     done
-                    
+
                     if [ "${found}" = "true" ]; then
                         askedToDelete="0"
                         printf "A directory was found which matches the repo name '${PWD}/${dirName}'\nDelete it? (Y/n): "
@@ -152,13 +150,13 @@ function c_git_delete_repo
                         repoDir="${dirName}"
                     fi
                 fi
-                
+
                 # if delRepoDir has been assigned (assumed via read) and it equals 'n', then delete the directory
                 if [ "${askedToDelete}" = "0" ] && [ "${delRepoDir}" != "n" ] && [ "${delRepoDir}" != "N" ]; then
                     rm -rf "${repoDir}"
                     echo "Successfully deleted directory '${repoDir}'"
                 fi
-                
+
             else
                 echo "Error: git repo '${repoName}' was not found"
             fi
@@ -192,27 +190,27 @@ function c_git_fork_and_clone_repo
         local owner=""
         local repo=""
         local arrIn=""
-        
+
         if [[ "${1}" == *"/"* ]]; then
 			arrIn=(${1//\// })
 			owner="${arrIn[0]}"
 			repo="${arrIn[1]}"
-			
+
 			if [ ! -z ${2+x} ]; then
 				newName="${2}"
 			fi
         else
 			owner="${arrIn[0]}"
 			repo="${arrIn[1]}"
-			
+
 			if [ ! -z ${3+x} ]; then
 				newName="${3}"
 			fi
         fi
-        
+
 		echo "forking repo ${repo}..."
 		curl -u "${GIT_API_TOKEN}":x-oauth-basic -d '{"owner": "'"${owner}"'", "repo": "'"${repo}"'"}' "https://api.github.com/repos/${owner}/${repo}/forks" --silent --output /dev/null
-		
+
 		local i=0;
 		local success=1
 		while [ ${success} -eq 1 ] && [ ${i} -lt 5 ]; do
@@ -222,7 +220,7 @@ function c_git_fork_and_clone_repo
 			success=$?
 			i=$((${i}+1))
 		done
-		
+
 		if [ ${success} -eq 1 ]; then
 			echo "unable to clone repo '${repo}' after five tries."
 		else
@@ -236,7 +234,7 @@ function c_git_fork_and_clone_repo
 }
 
 function c_git_rename_repo
-{	
+{
     if [ -z ${1+x} ]; then
 		echo "c_git_rename_repo requires at least one string parameter ([<old>] <new>)"
 	else
@@ -291,7 +289,7 @@ function __try_clone_repo
 				exitStatus=0
 				;;
 		esac
-		
+
 		return ${exitStatus};
 	fi
 }
@@ -318,12 +316,12 @@ function gitp
 
 function c_git_add_ssh_key
 {
-    if [ -z ${1+x} ] || [ -z ${2+x} ]; then
-	echo "c_git_add_ssh_key expects two parameters (title, pub key contents)"
+    if [ -z ${1+x} ] || [ ! -z ${2+x} ]; then
+			echo "c_git_add_ssh_key expects one parameter (title)"
     else
-	local title="${1}"
-	local key="${2}"
-	curl -H "Authorization: token ${GIT_API_TOKEN}" -d '{"title": "'"${title}"'", "key": "'"${key}"'"}' https://api.github.com/user/keys
+			local title="${1}"
+			local key="$(<~/.ssh/id_rsa.pub)"
+			curl -H "Authorization: token ${GIT_API_TOKEN}" -d '{"title": "'"${title}"'", "key": "'"${key}"'"}' https://api.github.com/user/keys
     fi
 }
 

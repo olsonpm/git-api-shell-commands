@@ -1,11 +1,11 @@
-#!/usr/bin/env bash
+#! /usr/bin/env sh
 
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+DIR=$( cd "$( dirname "${0}" )" && pwd )
 
-rm -rf ~/.bash_old
-mkdir ~/.bash_old
-mkdir -p ~/.bash_fxns.d
-mkdir -p ~/.bash_old/.bash_fxns.d
-mv ~/.bash_fxns.d/git ~/.bash_old/.bash_fxns.d/git 2>/dev/null
+rm -rf ~/.shell_old
+mkdir ~/.shell_old
+mkdir -p ~/.shell_fxns.d
+mkdir -p ~/.shell_old/.shell_fxns.d
+mv ~/.shell_fxns.d/git.sh ~/.shell_old/.shell_fxns.d/git.sh 2>/dev/null
 
-ln -s "${DIR}/git-api-shell-commands" ~/.bash_fxns.d/git
+ln -s "${DIR}/git-api-shell-commands.sh" ~/.shell_fxns.d/git.sh
